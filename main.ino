@@ -10,12 +10,18 @@
 const uint8_t VOLUME = 7; // 0..63
 
 #define I2SR (i2s_port_t)0
-#define VM GPIO_NUM_0 // button
-#define ONled 0
+#define VM GPIO_NUM_0    // button
 #define PW GPIO_NUM_21   // Amp power ON
 #define GAIN GPIO_NUM_23 //
 #define BLOCK_SIZE 128
 #define SD_CS 13
+#define I2S_DOUT 26
+#define I2S_BCLK 5
+#define I2S_LRC 25
+#define I2S_DIN 35
+#define SPI_MOSI 15
+#define SPI_MISO 2
+#define SPI_SCK 14
 
 const i2s_config_t i2s_configR = {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive, transfer
@@ -27,11 +33,6 @@ const i2s_config_t i2s_configR = {
     .dma_buf_count = 64,                      // number of buffers
     .dma_buf_len = BLOCK_SIZE                 // samples per buffer
 };
-
-#define I2S_DOUT 26
-#define I2S_BCLK 5
-#define I2S_LRC 25
-#define I2S_DIN 35
 
 i2s_pin_config_t pin_configR =
     {
@@ -57,7 +58,7 @@ static void playAudio(char *fileName)
 
   File f = SD.open(fileName, FILE_READ);
   if (f == NULL)
-    printf("err opening file\n");
+    printf("Error opening file\n");
 
   f.read((uint8_t *)c, 44);
 
@@ -93,14 +94,9 @@ static void playAudio(char *fileName)
   printf("Stop\n");
 }
 
-#define SPI_MOSI 15
-#define SPI_MISO 2
-#define SPI_SCK 14
-
 void setup()
 {
   Serial.begin(115200);
-  esp_err_t err;
 
   if (!SPIFFS.begin(true))
     Serial.println("SPIFFS failed \n");
@@ -138,7 +134,6 @@ void loop()
   if (gpio_get_level(VM) == 0)
   {
     i2s_start(I2SR);
-    //playAudio("/500hz44100Mono.wav");
     playAudio("/1/cherepaha-aha-aha-8bit-mono.wav");
     delay(100);
     i2s_stop(I2SR);

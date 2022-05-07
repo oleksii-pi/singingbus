@@ -7,7 +7,7 @@
 #include <driver/i2s.h>
 #include "SPIFFS.h"
 
-const uint8_t VOLUME = 7; // 0..63
+const uint8_t VOLUME = 2; // OK = 7 // 0..63
 
 #define I2SR (i2s_port_t)0
 #define VM GPIO_NUM_0    // button
@@ -22,6 +22,8 @@ const uint8_t VOLUME = 7; // 0..63
 #define SPI_MOSI 15
 #define SPI_MISO 2
 #define SPI_SCK 14
+
+typedef bool (*vExitPlayingPredicate)();
 
 const i2s_config_t i2s_configR = {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive, transfer
@@ -41,7 +43,7 @@ i2s_pin_config_t pin_configR =
         .data_out_num = I2S_DOUT,
         .data_in_num = I2S_DIN};
 
-static void playAudio(char *fileName)
+static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate)
 {
   printf("Playing file ");
   printf(fileName);
@@ -78,10 +80,14 @@ static void playAudio(char *fileName)
         int n = 0;
         while (n == 0)
           n = i2s_write_bytes(I2SR, (const char *)s16, 128, portMAX_DELAY);
+        if (exitPlayingPredicate())
+          goto cleanup;
       }
     }
+
   } while (l > 0);
 
+cleanup:
   // muting after playing
   for (int i = 0; i < 64; i++)
     s16[i] = 0;
@@ -129,12 +135,40 @@ void setup()
   i2s_stop(I2SR);
 }
 
+bool ExitPlayingPredicate()
+{
+  return gpio_get_level(VM) == 0;
+}
+
+uint8_t waitForInput()
+{
+  for (;;)
+  {
+    delay(10);
+    if (gpio_get_level(VM) == 0)
+      break;
+  }
+
+  for (;;)
+  {
+    delay(10);
+    if (gpio_get_level(VM) == 1)
+      break;
+  }
+
+  return 1;
+}
+
+uint8_t _currentInput;
+
 void loop()
 {
-  if (gpio_get_level(VM) == 0)
+  _currentInput = waitForInput();
+
+  if (_currentInput == 1)
   {
     i2s_start(I2SR);
-    playAudio("/1/cherepaha-aha-aha-8bit-mono.wav");
+    playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPlayingPredicate)ExitPlayingPredicate);
     delay(100);
     i2s_stop(I2SR);
   }

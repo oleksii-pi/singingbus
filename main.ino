@@ -9,8 +9,13 @@
 
 const uint8_t VOLUME = 2; // OK = 7 // 0..63
 
+#define B1 GPIO_NUM_0
+#define B2 GPIO_NUM_4
+#define B3 GPIO_NUM_18
+#define B4 GPIO_NUM_19
+#define B5 GPIO_NUM_32
+
 #define I2SR (i2s_port_t)0
-#define VM GPIO_NUM_0    // button
 #define PW GPIO_NUM_21   // Amp power ON
 #define GAIN GPIO_NUM_23 //
 #define BLOCK_SIZE 128
@@ -45,9 +50,11 @@ i2s_pin_config_t pin_configR =
 
 static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate)
 {
-  printf("Playing file ");
-  printf(fileName);
-  printf("\n");
+  i2s_start(I2SR);
+
+  Serial.printf("Playing file ");
+  Serial.printf(fileName);
+  Serial.printf("\n");
 
   int16_t s0, s1;
   static int8_t c[44100];
@@ -60,7 +67,7 @@ static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate
 
   File f = SD.open(fileName, FILE_READ);
   if (f == NULL)
-    printf("Error opening file\n");
+    Serial.printf("Error opening file\n");
 
   f.read((uint8_t *)c, 44);
 
@@ -68,7 +75,7 @@ static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate
   {
     l = (int)f.read((uint8_t *)c, 44100);
     if (l < 0)
-      printf("Error \n");
+      Serial.printf("Error reading WAV file \n");
     for (int i = 0; i < l; i++)
     {
       s0 = (((int16_t)(c[i] & 0xFF)) - 128) << 8;
@@ -80,7 +87,7 @@ static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate
         int n = 0;
         while (n == 0)
           n = i2s_write_bytes(I2SR, (const char *)s16, 128, portMAX_DELAY);
-        if (exitPlayingPredicate())
+        if (exitPlayingPredicate != NULL && exitPlayingPredicate())
           goto cleanup;
       }
     }
@@ -97,30 +104,40 @@ cleanup:
   i2s_zero_dma_buffer(I2SR);
 
   f.close();
-  printf("Stop\n");
+  i2s_stop(I2SR);
+
+  Serial.printf("Stop\n");
 }
 
 void setup()
 {
   Serial.begin(115200);
 
-  if (!SPIFFS.begin(true))
-    Serial.println("SPIFFS failed \n");
+  //if (!SPIFFS.begin(true))
+  //  Serial.println("SPIFFS failed \n");
 
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   if (!SD.begin(SD_CS))
   {
     Serial.printf("SD initialization failed!\n");
   }
-  else
-  {
-    Serial.printf("SD initialization successfully\n");
-  }
 
-  //Init buton
-  gpio_reset_pin(VM);
-  gpio_set_direction(VM, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(VM, GPIO_PULLDOWN_ONLY);
+  //Init butons
+  gpio_reset_pin(B1);
+  gpio_set_direction(B1, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(B1, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(B2);
+  gpio_set_direction(B2, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(B2, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(B3);
+  gpio_set_direction(B3, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(B3, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(B4);
+  gpio_set_direction(B4, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(B4, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(B5);
+  gpio_set_direction(B5, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(B5, GPIO_PULLUP_ONLY);
 
   // Amp power enable
   gpio_reset_pin(PW);
@@ -137,39 +154,50 @@ void setup()
 
 bool ExitPlayingPredicate()
 {
-  return gpio_get_level(VM) == 0;
+  return gpio_get_level(B1) == 0 || gpio_get_level(B2) == 0 || gpio_get_level(B3) == 0 || gpio_get_level(B4) == 0 || gpio_get_level(B5) == 0;
+}
+
+void PrintButtonsState()
+{
+  Serial.print(gpio_get_level(B1));
+  Serial.print(gpio_get_level(B2));
+  Serial.print(gpio_get_level(B3));
+  Serial.print(gpio_get_level(B4));
+  Serial.println(gpio_get_level(B5));
 }
 
 uint8_t waitForInput()
 {
+  uint8_t result = 0;
   for (;;)
   {
-    delay(10);
-    if (gpio_get_level(VM) == 0)
+    if (gpio_get_level(B1) == 0 || gpio_get_level(B2) == 0 || gpio_get_level(B3) == 0 || gpio_get_level(B4) == 0 || gpio_get_level(B5) == 0)
+    {
       break;
+    }
+    delay(10);
   }
-
   for (;;)
   {
-    delay(10);
-    if (gpio_get_level(VM) == 1)
+    result = result | !gpio_get_level(B1) | !gpio_get_level(B2) << 1 | !gpio_get_level(B3) << 2 | !gpio_get_level(B4) << 3 | !gpio_get_level(B4) << 4;
+    if (gpio_get_level(B1) == 1 && gpio_get_level(B2) == 1 && gpio_get_level(B3) == 1 && gpio_get_level(B4) == 1 && gpio_get_level(B5) == 1)
+    {
       break;
+    }
+    delay(10);
   }
-
-  return 1;
+  return result;
 }
 
 uint8_t _currentInput;
 
 void loop()
 {
+  //playAudio("/debug.wav", NULL);
   _currentInput = waitForInput();
 
-  if (_currentInput == 1)
+  if ((_currentInput >> 0) & 1 == 1)
   {
-    i2s_start(I2SR);
     playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPlayingPredicate)ExitPlayingPredicate);
-    delay(100);
-    i2s_stop(I2SR);
   }
 }

@@ -3,5 +3,5 @@
     "board": "esp32:esp32:esp32wrover",
     "port": "/dev/tty.usbserial-01321CD9",
     "sketch": "main.ino",
-    "output": "./build/"
+    "output": "../signinbus-build/"
 }

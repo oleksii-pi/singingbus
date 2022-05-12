@@ -113,8 +113,8 @@ void setup()
 {
   Serial.begin(115200);
 
-  //if (!SPIFFS.begin(true))
-  //  Serial.println("SPIFFS failed \n");
+  if (!SPIFFS.begin(true))
+    Serial.println("SPIFFS failed \n");
 
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   if (!SD.begin(SD_CS))
@@ -179,7 +179,7 @@ uint8_t waitForInput()
   }
   for (;;)
   {
-    result = result | !gpio_get_level(B1) | !gpio_get_level(B2) << 1 | !gpio_get_level(B3) << 2 | !gpio_get_level(B4) << 3 | !gpio_get_level(B4) << 4;
+    result = result | !gpio_get_level(B1) | !gpio_get_level(B2) << 1 | !gpio_get_level(B3) << 2 | !gpio_get_level(B4) << 3 | !gpio_get_level(B5) << 4;
     if (gpio_get_level(B1) == 1 && gpio_get_level(B2) == 1 && gpio_get_level(B3) == 1 && gpio_get_level(B4) == 1 && gpio_get_level(B5) == 1)
     {
       break;
@@ -198,6 +198,23 @@ void loop()
 
   if ((_currentInput >> 0) & 1 == 1)
   {
-    playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPlayingPredicate)ExitPlayingPredicate);
+    //playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPlayingPredicate)ExitPlayingPredicate);
+    playAudio("/1.wav", NULL);
+  }
+  if ((_currentInput >> 1) & 1 == 1)
+  {
+    playAudio("/2.wav", NULL);
+  }
+  if ((_currentInput >> 2) & 1 == 1)
+  {
+    playAudio("/3.wav", NULL);
+  }
+  if ((_currentInput >> 3) & 1 == 1)
+  {
+    playAudio("/4.wav", NULL);
+  }
+  if ((_currentInput >> 4) & 1 == 1)
+  {
+    playAudio("/5.wav", NULL);
   }
 }

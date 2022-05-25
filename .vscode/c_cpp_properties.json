@@ -96,6 +96,7 @@
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/hardware/esp32/1.0.5/libraries/FS/src",
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/hardware/esp32/1.0.5/libraries/SPI/src",
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/hardware/esp32/1.0.5/libraries/SPIFFS/src",
+                "/Users/alekseypi/Library/Arduino15/packages/esp32/hardware/esp32/1.0.5/libraries/EEPROM/src",
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/include/c++/5.2.0",
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/include/c++/5.2.0/xtensa-esp32-elf",
                 "/Users/alekseypi/Library/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/include/c++/5.2.0/backward",

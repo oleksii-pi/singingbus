@@ -6,8 +6,11 @@
 #include "esp_log.h"
 #include <driver/i2s.h>
 #include "SPIFFS.h"
+#include <EEPROM.h>
 
 const uint8_t VOLUME = 7; // OK = 7 // 0..63
+
+#define EEPROM_SIZE 1
 
 #define B1 GPIO_NUM_0
 #define B2 GPIO_NUM_4
@@ -115,9 +118,22 @@ stopPlaying:
   Serial.println("Exit playAudio");
 }
 
+uint8_t startingSongId; // 0..34
+const uint8_t SONGS_COUNT = 35;
+
 void setup()
 {
   Serial.begin(115200);
+
+  EEPROM.begin(EEPROM_SIZE);
+  int startingSongDataAddress = 0;
+  startingSongId = EEPROM.read(startingSongDataAddress);
+  startingSongId = startingSongId == 255 ? 0 : startingSongId;
+  startingSongId++;
+  if (startingSongId == SONGS_COUNT)
+    startingSongId = 0;
+  EEPROM.write(startingSongDataAddress, startingSongId);
+  EEPROM.commit();
 
   if (!SPIFFS.begin(true))
     Serial.println("SPIFFS failed \bytesWritten");
@@ -191,6 +207,18 @@ uint8_t waitForInput()
   return result;
 }
 
+void stopAllServices()
+{
+  Serial.println("Stop all services...");
+
+  SPI.end();
+  EEPROM.end();
+  //SPIFFS.end();
+  //SD.end();
+  // Serial.flush();
+  //Serial.end();
+}
+
 uint8_t _currentInput;
 
 void loop()
@@ -202,27 +230,23 @@ void loop()
   bool white = (_currentInput >> 3) & 1 == 1;
   bool blue = (_currentInput >> 4) & 1 == 1;
 
-  int buttonIndex = red      ? 0
-                    : yellow ? 1
-                    : green  ? 2
-                    : white  ? 3
-                    : blue   ? 4
-                             : -1;
+  int pressedButtonIndex =
+      red      ? 0
+      : yellow ? 1
+      : green  ? 2
+      : white  ? 3
+      : blue   ? 4
+               : -1;
 
   if (red && blue)
   {
     Serial.println("Restarting...");
     ESP.restart();
-    return;
   }
 
   if (red && yellow)
   {
-    Serial.println("Stop all services...");
-    SPI.end();
-    //SPIFFS.end();
-    //SD.end();
-    //Serial.end();
+    stopAllServices();
     return;
   }
 

@@ -7,7 +7,7 @@
 #include <driver/i2s.h>
 #include "SPIFFS.h"
 
-const uint8_t VOLUME = 2; // OK = 7 // 0..63
+const uint8_t VOLUME = 7; // OK = 7 // 0..63
 
 #define B1 GPIO_NUM_0
 #define B2 GPIO_NUM_4
@@ -28,7 +28,7 @@ const uint8_t VOLUME = 2; // OK = 7 // 0..63
 #define SPI_MISO 2
 #define SPI_SCK 14
 
-typedef bool (*vExitPlayingPredicate)();
+typedef bool (*vExitPredicate)();
 
 const i2s_config_t i2s_configR = {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive, transfer
@@ -48,65 +48,71 @@ i2s_pin_config_t pin_configR =
         .data_out_num = I2S_DOUT,
         .data_in_num = I2S_DIN};
 
-static void playAudio(char *fileName, vExitPlayingPredicate exitPlayingPredicate)
+static void playAudio(char *fileName, vExitPredicate exitPredicate)
 {
+  File file;
+  int16_t signal;
+  static int8_t buffer[44100];
+  int bufferSize;
+  uint16_t buffer64[64];
+
+  Serial.printf("Opening file ");
+  Serial.println(fileName);
+
+  file = SD.open(fileName, FILE_READ);
+  if (file == NULL)
+  {
+    Serial.println("Error opening file");
+    return;
+  }
+
   i2s_start(I2SR);
-
-  Serial.printf("Playing file ");
-  Serial.printf(fileName);
-  Serial.printf("\n");
-
-  int16_t s0, s1;
-  static int8_t c[44100];
-  int l;
-  size_t t;
-  uint16_t s16[64];
-  int a = 0;
-
   i2s_set_clk(I2SR, 44100, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
 
-  File f = SD.open(fileName, FILE_READ);
-  if (f == NULL)
-    Serial.printf("Error opening file\n");
-
-  f.read((uint8_t *)c, 44);
+  file.read((uint8_t *)buffer, 44);
 
   do
   {
-    l = (int)f.read((uint8_t *)c, 44100);
-    if (l < 0)
-      Serial.printf("Error reading WAV file \n");
-    for (int i = 0; i < l; i++)
+    bufferSize = (int)file.read((uint8_t *)buffer, 44100);
+    if (bufferSize < 0)
     {
-      s0 = (((int16_t)(c[i] & 0xFF)) - 128) << 8;
-      s0 = s0 >> a;
-      s0 = s0 * VOLUME >> 6;
-      s16[i % 64] = (uint16_t)s0;
-      if (((i + 1) % 64) == 0)
+      Serial.println("Error reading file");
+      goto stopPlaying;
+    }
+
+    for (int i = 0; i < bufferSize; i++)
+    {
+      signal = (((int16_t)(buffer[i] & 0xFF)) - 128) << 8;
+      signal = signal * VOLUME >> 6;
+      buffer64[i % 64] = (uint16_t)signal;
+      if (i % 64 == 63)
       {
-        int n = 0;
-        while (n == 0)
-          n = i2s_write_bytes(I2SR, (const char *)s16, 128, portMAX_DELAY);
-        if (exitPlayingPredicate != NULL && exitPlayingPredicate())
-          goto cleanup;
+        int bytesWritten = 0;
+        while (bytesWritten == 0)
+        {
+          bytesWritten = i2s_write_bytes(I2SR, (const char *)buffer64, 128, portMAX_DELAY);
+        }
+      }
+      if (exitPredicate != NULL && exitPredicate())
+      {
+        goto stopPlaying;
       }
     }
 
-  } while (l > 0);
+  } while (bufferSize > 0);
 
-cleanup:
-  // muting after playing
+stopPlaying:
   for (int i = 0; i < 64; i++)
-    s16[i] = 0;
-  int n = 0;
-  while (n == 0)
-    n = i2s_write_bytes(I2SR, (const char *)s16, 128, portMAX_DELAY);
+    buffer64[i] = 0;
+  int bytesWritten = 0;
+  while (bytesWritten == 0)
+    bytesWritten = i2s_write_bytes(I2SR, (const char *)buffer64, 128, portMAX_DELAY);
   i2s_zero_dma_buffer(I2SR);
 
-  f.close();
+  file.close();
   i2s_stop(I2SR);
 
-  Serial.printf("Stop\n");
+  Serial.println("Exit playAudio");
 }
 
 void setup()
@@ -114,12 +120,12 @@ void setup()
   Serial.begin(115200);
 
   if (!SPIFFS.begin(true))
-    Serial.println("SPIFFS failed \n");
+    Serial.println("SPIFFS failed \bytesWritten");
 
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   if (!SD.begin(SD_CS))
   {
-    Serial.printf("SD initialization failed!\n");
+    Serial.printf("SD initialization failed!\bytesWritten");
   }
 
   //Init butons
@@ -152,18 +158,14 @@ void setup()
   i2s_stop(I2SR);
 }
 
-bool ExitPlayingPredicate()
+bool AnyButtonPressed()
 {
   return gpio_get_level(B1) == 0 || gpio_get_level(B2) == 0 || gpio_get_level(B3) == 0 || gpio_get_level(B4) == 0 || gpio_get_level(B5) == 0;
 }
 
-void PrintButtonsState()
+bool AllButtonsUnpressed()
 {
-  Serial.print(gpio_get_level(B1));
-  Serial.print(gpio_get_level(B2));
-  Serial.print(gpio_get_level(B3));
-  Serial.print(gpio_get_level(B4));
-  Serial.println(gpio_get_level(B5));
+  return gpio_get_level(B1) == 1 && gpio_get_level(B2) == 1 && gpio_get_level(B3) == 1 && gpio_get_level(B4) == 1 && gpio_get_level(B5) == 1;
 }
 
 uint8_t waitForInput()
@@ -171,7 +173,7 @@ uint8_t waitForInput()
   uint8_t result = 0;
   for (;;)
   {
-    if (gpio_get_level(B1) == 0 || gpio_get_level(B2) == 0 || gpio_get_level(B3) == 0 || gpio_get_level(B4) == 0 || gpio_get_level(B5) == 0)
+    if (AnyButtonPressed())
     {
       break;
     }
@@ -180,7 +182,7 @@ uint8_t waitForInput()
   for (;;)
   {
     result = result | !gpio_get_level(B1) | !gpio_get_level(B2) << 1 | !gpio_get_level(B3) << 2 | !gpio_get_level(B4) << 3 | !gpio_get_level(B5) << 4;
-    if (gpio_get_level(B1) == 1 && gpio_get_level(B2) == 1 && gpio_get_level(B3) == 1 && gpio_get_level(B4) == 1 && gpio_get_level(B5) == 1)
+    if (AllButtonsUnpressed())
     {
       break;
     }
@@ -193,28 +195,45 @@ uint8_t _currentInput;
 
 void loop()
 {
-  //playAudio("/debug.wav", NULL);
   _currentInput = waitForInput();
+  bool red = (_currentInput >> 0) & 1 == 1;
+  bool yellow = (_currentInput >> 1) & 1 == 1;
+  bool green = (_currentInput >> 2) & 1 == 1;
+  bool white = (_currentInput >> 3) & 1 == 1;
+  bool blue = (_currentInput >> 4) & 1 == 1;
+
+  int buttonIndex = red      ? 0
+                    : yellow ? 1
+                    : green  ? 2
+                    : white  ? 3
+                    : blue   ? 4
+                             : -1;
+
+  if (red && blue)
+  {
+    Serial.println("Restarting...");
+    ESP.restart();
+    return;
+  }
+
+  if (red && yellow)
+  {
+    Serial.println("Stop all services...");
+    SPI.end();
+    //SPIFFS.end();
+    //SD.end();
+    //Serial.end();
+    return;
+  }
+
+  // current folder /0/0..4 /
+
+  //! how to play next song?
+  //! how to change statiion?
+  //! how to change teenMode?
 
   if ((_currentInput >> 0) & 1 == 1)
   {
-    //playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPlayingPredicate)ExitPlayingPredicate);
-    playAudio("/1.wav", NULL);
-  }
-  if ((_currentInput >> 1) & 1 == 1)
-  {
-    playAudio("/2.wav", NULL);
-  }
-  if ((_currentInput >> 2) & 1 == 1)
-  {
-    playAudio("/3.wav", NULL);
-  }
-  if ((_currentInput >> 3) & 1 == 1)
-  {
-    playAudio("/4.wav", NULL);
-  }
-  if ((_currentInput >> 4) & 1 == 1)
-  {
-    playAudio("/5.wav", NULL);
+    playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPredicate)AnyButtonPressed);
   }
 }

@@ -10,6 +10,7 @@
 
 const uint8_t VOLUME = 7; // OK = 7 // 0..63
 const uint8_t SONGS_COUNT = 35;
+const uint8_t SONGS_PER_BUTTON = 7;
 
 uint8_t _startingSongId; // 0..SONGS_COUNT-1
 
@@ -244,6 +245,7 @@ uint8_t waitForInput()
 }
 
 uint8_t _currentInput;
+uint8_t _rootFolder, _buttonFolder, _previousButtonFolder, _songIndex;
 
 void loop()
 {
@@ -253,14 +255,6 @@ void loop()
   bool green = (_currentInput >> 2) & 1 == 1;
   bool white = (_currentInput >> 3) & 1 == 1;
   bool blue = (_currentInput >> 4) & 1 == 1;
-
-  int pressedButtonIndex =
-      red      ? 0
-      : yellow ? 1
-      : green  ? 2
-      : white  ? 3
-      : blue   ? 4
-               : -1;
 
   if (red && blue)
   {
@@ -274,14 +268,36 @@ void loop()
     return;
   }
 
-  // current folder /0/0..4 /
-
-  //! how to play next song?
-  //! how to change statiion?
-  //! how to change teenMode?
-
-  if ((_currentInput >> 0) & 1 == 1)
+  if (yellow && blue)
   {
-    playAudio("/1/cherepaha-aha-aha-8bit-mono.wav", (vExitPredicate)AnyButtonPressed);
+    _rootFolder++;
+    if (_rootFolder == 2)
+      _rootFolder = 0;
   }
+
+  int pressedButtonIndex =
+      red      ? 0
+      : yellow ? 1
+      : green  ? 2
+      : white  ? 3
+      : blue   ? 4
+               : -1;
+
+  _buttonFolder = pressedButtonIndex;
+  if (_buttonFolder != _previousButtonFolder)
+  {
+    _songIndex = 0;
+  }
+  else
+  {
+    _songIndex++;
+    if (_songIndex > SONGS_PER_BUTTON)
+      _songIndex = 0;
+  }
+
+  _previousButtonFolder = _buttonFolder;
+
+  String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
+  char *fileName = &songFileName[0];
+  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
 }

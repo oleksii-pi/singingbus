@@ -7,6 +7,7 @@
 #include <driver/i2s.h>
 #include "SPIFFS.h"
 #include <EEPROM.h>
+#include <NeoPixelBus.h>
 
 const uint8_t VOLUME = 7; // OK = 7 // 0..63
 
@@ -55,6 +56,23 @@ i2s_pin_config_t pin_configR =
         .ws_io_num = I2S_LRC,
         .data_out_num = I2S_DOUT,
         .data_in_num = I2S_DIN};
+
+// NeoPixel led control
+#define PixelCount 1
+#define PixelPin 22
+RgbColor RED(255, 0, 0);
+RgbColor GREEN(0, 255, 0);
+RgbColor BLUE(0, 0, 255);
+RgbColor YELLOW(255, 128, 0);
+RgbColor WHITE(255, 255, 255);
+RgbColor BLACK(0, 0, 0);
+
+RgbColor REDL(64, 0, 0);
+RgbColor GREENL(0, 64, 0);
+RgbColor BLUEL(0, 0, 64);
+RgbColor WHITEL(64, 64, 64);
+RgbColor BLACKL(0, 0, 0);
+NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
 {
@@ -214,6 +232,13 @@ void setup()
   String songFileName = "/0/" + String(_startSongId / SONGS_PER_BUTTON) + "/" + String(_startSongId % SONGS_PER_BUTTON) + ".wav";
   char *fileName = &songFileName[0];
   playAudio(fileName, (vExitPredicate)AnyButtonPressed);
+
+  // init ADC interface for battery survey
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
+
+  // init LED
+  strip.Begin();
 }
 
 bool AnyButtonPressed()
@@ -247,6 +272,27 @@ uint8_t waitForInput()
     delay(10);
   }
   return result;
+}
+
+#define DISCHARGED_STATE 1800
+#define FULLYCHARGED_STATE 2400
+void checkBatteryStatus()
+{
+  int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
+  if (batteryVoltage < DISCHARGED_STATE)
+  {
+    playAudio("/debug/debug.wav", NULL);
+    strip.SetPixelColor(0, RED);
+    strip.Show();
+  }
+  if (batteryVoltage > FULLYCHARGED_STATE)
+  {
+    strip.SetPixelColor(0, GREEN);
+    strip.Show();
+  }
+
+  Serial.printf("Battery charging status: ");
+  Serial.println(batteryVoltage);
 }
 
 uint8_t _currentInput;
@@ -299,10 +345,19 @@ void loop()
     if (_songIndex > SONGS_PER_BUTTON)
       _songIndex = 0;
   }
-
   _previousButtonFolder = _buttonFolder;
 
-  String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
-  char *fileName = &songFileName[0];
-  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
+  while (true)
+  {
+    String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
+    char *fileName = &songFileName[0];
+    checkBatteryStatus();
+    playAudio(fileName, (vExitPredicate)AnyButtonPressed);
+    if (AnyButtonPressed())
+      return;
+
+    _songIndex++;
+    if (_songIndex > SONGS_PER_BUTTON)
+      _songIndex = 0;
+  }
 }

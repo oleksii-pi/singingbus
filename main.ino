@@ -9,10 +9,11 @@
 #include <EEPROM.h>
 
 const uint8_t VOLUME = 7; // OK = 7 // 0..63
-const uint8_t SONGS_COUNT = 35;
-const uint8_t SONGS_PER_BUTTON = 7;
 
-uint8_t _startingSongId; // 0..SONGS_COUNT-1
+const uint8_t SONGS_PER_BUTTON = 7;
+const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
+
+uint8_t _startSongId; // 0..SONGS_COUNT-1
 
 #define EEPROM_SIZE 1
 
@@ -160,18 +161,7 @@ void Unmount_SD()
 
 void setup()
 {
-
   Serial.begin(115200);
-
-  EEPROM.begin(EEPROM_SIZE);
-  int startingSongDataAddress = 0;
-  _startingSongId = EEPROM.read(startingSongDataAddress);
-  _startingSongId = _startingSongId == 255 ? 0 : _startingSongId;
-  _startingSongId++;
-  if (_startingSongId >= SONGS_COUNT)
-    _startingSongId = 0;
-  EEPROM.write(startingSongDataAddress, _startingSongId);
-  EEPROM.commit();
 
   if (!SPIFFS.begin(true))
     Serial.println("SPIFFS failed!");
@@ -198,7 +188,7 @@ void setup()
   gpio_set_direction(B5, GPIO_MODE_INPUT);
   gpio_set_pull_mode(B5, GPIO_PULLUP_ONLY);
 
-  // Amp power enable
+  // enable amp power
   gpio_reset_pin(PW);
   gpio_set_direction(PW, GPIO_MODE_OUTPUT);
   gpio_set_level(PW, 1);
@@ -209,6 +199,21 @@ void setup()
   i2s_driver_install(I2SR, &i2s_configR, 0, NULL);
   i2s_set_pin(I2SR, &pin_configR);
   i2s_stop(I2SR);
+
+  // play start song:
+  EEPROM.begin(EEPROM_SIZE);
+  int startSongDataAddress = 0;
+  _startSongId = EEPROM.read(startSongDataAddress);
+  _startSongId = _startSongId == 255 ? 0 : _startSongId;
+  _startSongId++;
+  if (_startSongId >= SONGS_COUNT)
+    _startSongId = 0;
+  EEPROM.write(startSongDataAddress, _startSongId);
+  EEPROM.commit();
+
+  String songFileName = "/0/" + String(_startSongId / SONGS_PER_BUTTON) + "/" + String(_startSongId % SONGS_PER_BUTTON) + ".wav";
+  char *fileName = &songFileName[0];
+  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
 }
 
 bool AnyButtonPressed()

@@ -9,6 +9,9 @@
 #include <EEPROM.h>
 
 const uint8_t VOLUME = 7; // OK = 7 // 0..63
+const uint8_t SONGS_COUNT = 35;
+
+uint8_t _startingSongId; // 0..SONGS_COUNT-1
 
 #define EEPROM_SIZE 1
 
@@ -118,31 +121,64 @@ stopPlaying:
   Serial.println("Exit playAudio");
 }
 
-uint8_t startingSongId; // 0..34
-const uint8_t SONGS_COUNT = 35;
+void Unmount_SD()
+{
+  // Tested with Kingston 32GB
+  unsigned long time1;
+  time1 = micros();
+  Serial.println("Ejecting the SD");
+  SD.end();
+  SPI.end();
+  // Set MOSI High
+  pinMode(15, INPUT_PULLUP);
+  // Disable the SD by an HIGH CS/SS
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+  // Provide dummy clocks
+  pinMode(14, OUTPUT);
+  for (int i = 1; i <= 8; i++)
+  {
+    digitalWrite(14, LOW);
+    digitalWrite(14, HIGH);
+  }
+  // Set CLK High
+  pinMode(14, INPUT_PULLUP);
+  // Check if MISO became "LOW"
+  pinMode(2, INPUT_PULLDOWN);
+  delay(1);
+  if (digitalRead(2))
+  {
+    Serial.println(F("Failed to unmount the SD"));
+  }
+  else
+  {
+    Serial.printf("Unmounting of the SD-micro card takes : %ld [uSec]\n", (micros() - time1));
+    Serial.println(F("SD has been unmounted safely"));
+  }
+}
 
 void setup()
 {
+
   Serial.begin(115200);
 
   EEPROM.begin(EEPROM_SIZE);
   int startingSongDataAddress = 0;
-  startingSongId = EEPROM.read(startingSongDataAddress);
-  startingSongId = startingSongId == 255 ? 0 : startingSongId;
-  startingSongId++;
-  if (startingSongId == SONGS_COUNT)
-    startingSongId = 0;
-  EEPROM.write(startingSongDataAddress, startingSongId);
+  _startingSongId = EEPROM.read(startingSongDataAddress);
+  _startingSongId = _startingSongId == 255 ? 0 : _startingSongId;
+  _startingSongId++;
+  if (_startingSongId >= SONGS_COUNT)
+    _startingSongId = 0;
+  EEPROM.write(startingSongDataAddress, _startingSongId);
   EEPROM.commit();
 
   if (!SPIFFS.begin(true))
-    Serial.println("SPIFFS failed \bytesWritten");
+    Serial.println("SPIFFS failed!");
 
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+
   if (!SD.begin(SD_CS))
-  {
-    Serial.printf("SD initialization failed!\bytesWritten");
-  }
+    Serial.println("SD initialization failed!");
 
   //Init butons
   gpio_reset_pin(B1);
@@ -207,18 +243,6 @@ uint8_t waitForInput()
   return result;
 }
 
-void stopAllServices()
-{
-  Serial.println("Stop all services...");
-
-  SPI.end();
-  EEPROM.end();
-  //SPIFFS.end();
-  //SD.end();
-  // Serial.flush();
-  //Serial.end();
-}
-
 uint8_t _currentInput;
 
 void loop()
@@ -246,7 +270,7 @@ void loop()
 
   if (red && yellow)
   {
-    stopAllServices();
+    Unmount_SD();
     return;
   }
 

@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-const uint8_t VOLUME = 10; // DEFAULT = 7 // 0..63
+const uint8_t VOLUME = 7; // DEFAULT = 7 // 0..63
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
@@ -71,7 +71,7 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
 {
   File file;
-  static int16_t buffer[22050];
+  static int16_t buffer[1024];
   int bufferSize;
   int16_t buffer64[64];
 
@@ -92,7 +92,7 @@ static void playAudio(char *fileName, vExitPredicate exitPredicate)
 
   do
   {
-    bufferSize = (int)file.read((uint8_t *)buffer, 44100);
+    bufferSize = (int)file.read((uint8_t *)buffer, 1024 * 2);
     if (bufferSize < 0)
     {
       Serial.println("Error reading file");
@@ -101,17 +101,10 @@ static void playAudio(char *fileName, vExitPredicate exitPredicate)
 
     for (int i = 0; i < bufferSize / 2; i++)
     {
-      //signal = (((int16_t)(buffer[i] & 0xFF)) - 128) << 8;
-      //signal = signal * VOLUME >> 6;
-
       buffer64[i % 64] = buffer[i] * VOLUME >> 6;
       if (i % 64 == 63)
       {
-        int bytesWritten = 0;
-        while (bytesWritten == 0)
-        {
-          bytesWritten = i2s_write_bytes(I2SR, (const char *)buffer64, 128, portMAX_DELAY);
-        }
+        i2s_write_bytes(I2SR, (const char *)buffer64, 128, portMAX_DELAY);
       }
       if (exitPredicate != NULL && exitPredicate())
       {
@@ -213,7 +206,7 @@ void setup()
   i2s_stop(I2SR);
 
   // debug:
-  playAudio("/debug/16bit.wav", NULL);
+  //playAudio("/debug/16bit.wav", (vExitPredicate)AnyButtonPressed);
 
   // play start song:
   EEPROM.begin(EEPROM_SIZE);

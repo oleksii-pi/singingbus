@@ -15,6 +15,8 @@ const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
 
 uint8_t _startSongId; // 0..SONGS_COUNT-1
+uint8_t _currentInput;
+uint8_t _rootFolder, _buttonFolder, _previousButtonFolder, _songIndex;
 
 #define EEPROM_SIZE 1
 
@@ -36,6 +38,8 @@ uint8_t _startSongId; // 0..SONGS_COUNT-1
 #define SPI_MOSI 15
 #define SPI_MISO 2
 #define SPI_SCK 14
+
+#define DISCHARGED_STATE 1800 // #define FULLYCHARGED_STATE 2200
 
 typedef bool (*vExitPredicate)();
 
@@ -274,7 +278,6 @@ uint8_t waitForInput()
   return result;
 }
 
-#define DISCHARGED_STATE 1800 // #define FULLYCHARGED_STATE 2200
 void checkBatteryStatus()
 {
   int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
@@ -293,9 +296,6 @@ void checkBatteryStatus()
   Serial.printf("Battery charging status: ");
   Serial.println(batteryVoltage);
 }
-
-uint8_t _currentInput;
-uint8_t _rootFolder, _buttonFolder, _previousButtonFolder, _songIndex;
 
 void loop()
 {

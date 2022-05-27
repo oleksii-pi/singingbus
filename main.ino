@@ -212,6 +212,9 @@ void setup()
   i2s_set_pin(I2SR, &pin_configR);
   i2s_stop(I2SR);
 
+  // debug:
+  playAudio("/debug/16bit.wav", NULL);
+
   // play start song:
   EEPROM.begin(EEPROM_SIZE);
   int startSongDataAddress = 0;
@@ -273,7 +276,7 @@ void checkBatteryStatus()
   int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
   if (batteryVoltage < DISCHARGED_STATE)
   {
-    playAudio("/500Hz.wav", NULL);
+    playAudio("/battery-low.wav", NULL);
     strip.SetPixelColor(0, RED);
     strip.Show();
   }

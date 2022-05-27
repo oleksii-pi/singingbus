@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-const uint8_t VOLUME = 7; // OK = 7 // 0..63
+const uint8_t VOLUME = 10; // DEFAULT = 7 // 0..63
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
@@ -71,10 +71,9 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
 {
   File file;
-  int16_t signal;
-  static int8_t buffer[44100];
+  static int16_t buffer[22050];
   int bufferSize;
-  uint16_t buffer64[64];
+  int16_t buffer64[64];
 
   Serial.printf("Opening file ");
   Serial.println(fileName);
@@ -100,11 +99,12 @@ static void playAudio(char *fileName, vExitPredicate exitPredicate)
       goto stopPlaying;
     }
 
-    for (int i = 0; i < bufferSize; i++)
+    for (int i = 0; i < bufferSize / 2; i++)
     {
-      signal = (((int16_t)(buffer[i] & 0xFF)) - 128) << 8;
-      signal = signal * VOLUME >> 6;
-      buffer64[i % 64] = (uint16_t)signal;
+      //signal = (((int16_t)(buffer[i] & 0xFF)) - 128) << 8;
+      //signal = signal * VOLUME >> 6;
+
+      buffer64[i % 64] = buffer[i] * VOLUME >> 6;
       if (i % 64 == 63)
       {
         int bytesWritten = 0;

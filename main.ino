@@ -274,20 +274,14 @@ uint8_t waitForInput()
   return result;
 }
 
-#define DISCHARGED_STATE 1800
-#define FULLYCHARGED_STATE 2200
+#define DISCHARGED_STATE 1800 // #define FULLYCHARGED_STATE 2200
 void checkBatteryStatus()
 {
   int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
   if (batteryVoltage < DISCHARGED_STATE)
   {
-    playAudio("/debug/debug.wav", NULL);
+    playAudio("/500Hz.wav", NULL);
     strip.SetPixelColor(0, RED);
-    strip.Show();
-  }
-  else if (batteryVoltage > FULLYCHARGED_STATE)
-  {
-    strip.SetPixelColor(0, GREEN);
     strip.Show();
   }
   else

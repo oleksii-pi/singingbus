@@ -65,17 +65,7 @@ i2s_pin_config_t pin_configR =
 #define PixelCount 1
 #define PixelPin 22
 RgbColor RED(255, 0, 0);
-RgbColor GREEN(0, 255, 0);
-RgbColor BLUE(0, 0, 255);
-RgbColor YELLOW(255, 128, 0);
-RgbColor WHITE(255, 255, 255);
 RgbColor BLACK(0, 0, 0);
-
-RgbColor REDL(64, 0, 0);
-RgbColor GREENL(0, 64, 0);
-RgbColor BLUEL(0, 0, 64);
-RgbColor WHITEL(64, 64, 64);
-RgbColor BLACKL(0, 0, 0);
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 static void playAudio(char *fileName, vExitPredicate exitPredicate)

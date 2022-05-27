@@ -275,7 +275,7 @@ uint8_t waitForInput()
 }
 
 #define DISCHARGED_STATE 1800
-#define FULLYCHARGED_STATE 2400
+#define FULLYCHARGED_STATE 2200
 void checkBatteryStatus()
 {
   int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
@@ -285,9 +285,14 @@ void checkBatteryStatus()
     strip.SetPixelColor(0, RED);
     strip.Show();
   }
-  if (batteryVoltage > FULLYCHARGED_STATE)
+  else if (batteryVoltage > FULLYCHARGED_STATE)
   {
     strip.SetPixelColor(0, GREEN);
+    strip.Show();
+  }
+  else
+  {
+    strip.SetPixelColor(0, BLACK);
     strip.Show();
   }
 

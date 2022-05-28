@@ -39,7 +39,7 @@ uint8_t _rootFolder, _buttonFolder, _previousButtonFolder, _songIndex;
 #define SPI_MISO 2
 #define SPI_SCK 14
 
-#define DISCHARGED_STATE 1800 // #define FULLYCHARGED_STATE 2200
+#define DISCHARGED_STATE 1900 // #define FULLYCHARGED_STATE 2200
 
 typedef bool (*vExitPredicate)();
 
@@ -65,7 +65,7 @@ i2s_pin_config_t pin_configR =
 #define PixelCount 1
 #define PixelPin 22
 RgbColor RED(255, 0, 0);
-RgbColor BLACK(0, 0, 0);
+RgbColor GREEN(0, 16, 0);
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
@@ -223,12 +223,14 @@ void setup()
   char *fileName = &songFileName[0];
   playAudio(fileName, (vExitPredicate)AnyButtonPressed);
 
+  // init LED
+  strip.Begin();
+
   // init ADC interface for battery survey
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
 
-  // init LED
-  strip.Begin();
+  checkBatteryStatus();
 }
 
 bool AnyButtonPressed()
@@ -275,7 +277,7 @@ void checkBatteryStatus()
   }
   else
   {
-    strip.SetPixelColor(0, BLACK);
+    strip.SetPixelColor(0, GREEN);
     strip.Show();
   }
 

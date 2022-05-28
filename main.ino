@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-const uint8_t VOLUME = 7; // DEFAULT = 7 // 0..63
+const uint8_t VOLUME = 1; // DEFAULT = 31 // 0..255
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
@@ -65,8 +65,8 @@ i2s_pin_config_t pin_configR =
 // NeoPixel led control
 #define PixelCount 1
 #define PixelPin 22
-RgbColor RED(255, 0, 0);
-RgbColor GREEN(0, 16, 0);
+RgbColor BATTERYLOW(255, 0, 0);
+RgbColor BATTERYCHARGED(0, 3, 0);
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
@@ -102,7 +102,7 @@ static void playAudio(char *fileName, vExitPredicate exitPredicate)
 
     for (int i = 0; i < bufferSize / 2; i++)
     {
-      buffer64[i % 64] = buffer[i] * VOLUME >> 6;
+      buffer64[i % 64] = buffer[i] * VOLUME >> 8;
       if (i % 64 == 63)
       {
         i2s_write_bytes(I2SR, (const char *)buffer64, 128, portMAX_DELAY);
@@ -273,12 +273,12 @@ void checkBatteryStatus()
   if (batteryVoltage < DISCHARGED_STATE)
   {
     playAudio("/battery-low.wav", NULL);
-    strip.SetPixelColor(0, RED);
+    strip.SetPixelColor(0, BATTERYLOW);
     strip.Show();
   }
   else
   {
-    strip.SetPixelColor(0, GREEN);
+    strip.SetPixelColor(0, BATTERYCHARGED);
     strip.Show();
   }
 

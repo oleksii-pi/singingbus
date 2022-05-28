@@ -16,7 +16,8 @@ const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
 
 uint8_t _startSongId; // 0..SONGS_COUNT-1
 uint8_t _currentInput;
-uint8_t _rootFolder, _buttonFolder, _previousButtonFolder, _songIndex;
+uint8_t _rootFolder, _buttonFolder, _songIndex;
+uint8_t _previousButtonFolder = 255;
 
 #define EEPROM_SIZE 1
 

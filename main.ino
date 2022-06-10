@@ -9,10 +9,11 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-const uint8_t VOLUME = 1; // DEFAULT = 31 // 0..255
+const uint8_t VOLUME = 7; // DEFAULT = 7 // 0..255
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
+#define DISCHARGED_STATE 2000 // #define FULLYCHARGED_STATE 2400
 
 uint8_t _startSongId; // 0..SONGS_COUNT-1
 uint8_t _currentInput;
@@ -39,8 +40,6 @@ uint8_t _previousButtonFolder = 255;
 #define SPI_MOSI 15
 #define SPI_MISO 2
 #define SPI_SCK 14
-
-#define DISCHARGED_STATE 1900 // #define FULLYCHARGED_STATE 2200
 
 typedef bool (*vExitPredicate)();
 

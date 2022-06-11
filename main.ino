@@ -219,10 +219,6 @@ void setup()
   EEPROM.write(startSongDataAddress, _startSongId);
   EEPROM.commit();
 
-  String songFileName = "/0/" + String(_startSongId / SONGS_PER_BUTTON) + "/" + String(_startSongId % SONGS_PER_BUTTON) + ".wav";
-  char *fileName = &songFileName[0];
-  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
-
   // init LED
   strip.Begin();
 
@@ -231,6 +227,10 @@ void setup()
   adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
 
   checkBatteryStatus();
+
+  String songFileName = "/0/" + String(_startSongId / SONGS_PER_BUTTON) + "/" + String(_startSongId % SONGS_PER_BUTTON) + ".wav";
+  char *fileName = &songFileName[0];
+  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
 }
 
 bool AnyButtonPressed()

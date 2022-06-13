@@ -66,6 +66,7 @@ i2s_pin_config_t pin_configR =
 #define PixelPin 22
 RgbColor BATTERYLOW(255, 0, 0);
 RgbColor BATTERYCHARGED(0, 3, 0);
+RgbColor BATTERYCHARGING(0, 128, 0);
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 static void playAudio(char *fileName, vExitPredicate exitPredicate)
@@ -226,7 +227,7 @@ void setup()
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
 
-  checkBatteryStatus();
+  playSoundIfBatteryUncharged();
 }
 
 bool AnyButtonPressed()
@@ -268,7 +269,7 @@ uint8_t waitForInput()
   return result;
 }
 
-void checkBatteryStatus()
+void playSoundIfBatteryUncharged()
 {
   int batteryVoltage = adc1_get_raw(ADC1_GPIO33_CHANNEL);
   if (batteryVoltage < DISCHARGED_STATE)
@@ -300,7 +301,7 @@ void loop()
   {
     String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
     char *fileName = &songFileName[0];
-    checkBatteryStatus();
+    playSoundIfBatteryUncharged();
     playAudio(fileName, (vExitPredicate)AnyButtonPressed);
     if (AnyButtonPressed())
       break;

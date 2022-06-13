@@ -22,11 +22,11 @@ uint8_t _previousButtonFolder = 255;
 
 #define EEPROM_SIZE 1
 
-#define B1 GPIO_NUM_0
-#define B2 GPIO_NUM_4
-#define B3 GPIO_NUM_18
-#define B4 GPIO_NUM_19
-#define B5 GPIO_NUM_32
+#define RedButton GPIO_NUM_0
+#define YellowButton GPIO_NUM_4
+#define GreenButton GPIO_NUM_18
+#define WhiteButton GPIO_NUM_19
+#define BlueButton GPIO_NUM_32
 
 #define I2SR (i2s_port_t)0
 #define PW GPIO_NUM_21   // Amp power ON
@@ -177,21 +177,21 @@ void setup()
     Serial.println("SD initialization failed!");
 
   //Init butons
-  gpio_reset_pin(B1);
-  gpio_set_direction(B1, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(B1, GPIO_PULLUP_ONLY);
-  gpio_reset_pin(B2);
-  gpio_set_direction(B2, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(B2, GPIO_PULLUP_ONLY);
-  gpio_reset_pin(B3);
-  gpio_set_direction(B3, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(B3, GPIO_PULLUP_ONLY);
-  gpio_reset_pin(B4);
-  gpio_set_direction(B4, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(B4, GPIO_PULLUP_ONLY);
-  gpio_reset_pin(B5);
-  gpio_set_direction(B5, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(B5, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(RedButton);
+  gpio_set_direction(RedButton, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(RedButton, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(YellowButton);
+  gpio_set_direction(YellowButton, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(YellowButton, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(GreenButton);
+  gpio_set_direction(GreenButton, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(GreenButton, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(WhiteButton);
+  gpio_set_direction(WhiteButton, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(WhiteButton, GPIO_PULLUP_ONLY);
+  gpio_reset_pin(BlueButton);
+  gpio_set_direction(BlueButton, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(BlueButton, GPIO_PULLUP_ONLY);
 
   // enable amp power
   gpio_reset_pin(PW);
@@ -227,24 +227,21 @@ void setup()
   adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
 
   checkBatteryStatus();
-
-  String songFileName = "/0/" + String(_startSongId / SONGS_PER_BUTTON) + "/" + String(_startSongId % SONGS_PER_BUTTON) + ".wav";
-  char *fileName = &songFileName[0];
-  playAudio(fileName, (vExitPredicate)AnyButtonPressed);
 }
 
 bool AnyButtonPressed()
 {
-  return gpio_get_level(B1) == 0 || gpio_get_level(B2) == 0 || gpio_get_level(B3) == 0 || gpio_get_level(B4) == 0 || gpio_get_level(B5) == 0;
+  return gpio_get_level(RedButton) == 0 || gpio_get_level(YellowButton) == 0 || gpio_get_level(GreenButton) == 0 || gpio_get_level(WhiteButton) == 0 || gpio_get_level(BlueButton) == 0;
 }
 
 bool AllButtonsUnpressed()
 {
-  return gpio_get_level(B1) == 1 && gpio_get_level(B2) == 1 && gpio_get_level(B3) == 1 && gpio_get_level(B4) == 1 && gpio_get_level(B5) == 1;
+  return gpio_get_level(RedButton) == 1 && gpio_get_level(YellowButton) == 1 && gpio_get_level(GreenButton) == 1 && gpio_get_level(WhiteButton) == 1 && gpio_get_level(BlueButton) == 1;
 }
 
 uint8_t waitForInput()
 {
+  uint16_t iteration = 0;
   uint8_t result = 0;
   for (;;)
   {
@@ -252,11 +249,16 @@ uint8_t waitForInput()
     {
       break;
     }
+    iteration++;
+    if (iteration > 500)
+    {
+      return 0;
+    }
     delay(10);
   }
   for (;;)
   {
-    result = result | !gpio_get_level(B1) | !gpio_get_level(B2) << 1 | !gpio_get_level(B3) << 2 | !gpio_get_level(B4) << 3 | !gpio_get_level(B5) << 4;
+    result = result | !gpio_get_level(RedButton) | !gpio_get_level(YellowButton) << 1 | !gpio_get_level(GreenButton) << 2 | !gpio_get_level(WhiteButton) << 3 | !gpio_get_level(BlueButton) << 4;
     if (AllButtonsUnpressed())
     {
       break;
@@ -280,14 +282,39 @@ void checkBatteryStatus()
     strip.SetPixelColor(0, BATTERYCHARGED);
     strip.Show();
   }
-
-  Serial.printf("Battery charging status: ");
-  Serial.println(batteryVoltage);
 }
+
+bool _initialized = false;
 
 void loop()
 {
+  if (!_initialized)
+  {
+    _rootFolder = 0;
+    _buttonFolder = _startSongId / SONGS_PER_BUTTON;
+    _songIndex = _startSongId % SONGS_PER_BUTTON;
+    _initialized = true;
+  }
+
+  while (true)
+  {
+    String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
+    char *fileName = &songFileName[0];
+    checkBatteryStatus();
+    playAudio(fileName, (vExitPredicate)AnyButtonPressed);
+    if (AnyButtonPressed())
+      break;
+
+    _songIndex++;
+    if (_songIndex > SONGS_PER_BUTTON)
+      _songIndex = 0;
+  }
+
   _currentInput = waitForInput();
+  if (_currentInput == 0)
+  {
+    return;
+  }
   bool red = (_currentInput >> 0) & 1 == 1;
   bool yellow = (_currentInput >> 1) & 1 == 1;
   bool green = (_currentInput >> 2) & 1 == 1;
@@ -338,18 +365,4 @@ void loop()
       _songIndex = 0;
   }
   _previousButtonFolder = _buttonFolder;
-
-  while (true)
-  {
-    String songFileName = "/" + String(_rootFolder) + "/" + String(_buttonFolder) + "/" + String(_songIndex) + ".wav";
-    char *fileName = &songFileName[0];
-    checkBatteryStatus();
-    playAudio(fileName, (vExitPredicate)AnyButtonPressed);
-    if (AnyButtonPressed())
-      return;
-
-    _songIndex++;
-    if (_songIndex > SONGS_PER_BUTTON)
-      _songIndex = 0;
-  }
 }

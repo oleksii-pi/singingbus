@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-const uint8_t VOLUME = 7; // DEFAULT = 7 // 0..255
+uint8_t VOLUME = 7; // DEFAULT = 7 // 0..255
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
@@ -304,6 +304,11 @@ void loop()
   {
     Unmount_SD();
     return;
+  }
+
+  if (red && green)
+  {
+    VOLUME = 15;
   }
 
   if (yellow && blue)

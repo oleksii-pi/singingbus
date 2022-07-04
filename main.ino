@@ -291,7 +291,7 @@ void loop()
 {
   if (!_initialized)
   {
-    _rootFolder = _startSongId == 0 ? 1 : 0;
+    _rootFolder = _startSongId % 12 == 0 ? 1 : 0;
     _buttonFolder = _startSongId / SONGS_PER_BUTTON;
     _songIndex = _startSongId % SONGS_PER_BUTTON;
     _initialized = true;

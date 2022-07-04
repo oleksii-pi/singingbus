@@ -309,6 +309,7 @@ void loop()
     _songIndex++;
     if (_songIndex > SONGS_PER_BUTTON)
       _songIndex = 0;
+    _previousButtonFolder = 255;
   }
 
   _currentInput = waitForInput();

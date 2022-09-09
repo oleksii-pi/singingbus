@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
-uint8_t VOLUME = 7; // DEFAULT = 7 // 0..255
+uint8_t VOLUME = 15; // DEFAULT = 15 // 0..255
 
 const uint8_t SONGS_PER_BUTTON = 7;
 const uint8_t SONGS_COUNT = SONGS_PER_BUTTON * 5;
@@ -20,7 +20,9 @@ uint8_t _currentInput;
 uint8_t _rootFolder, _buttonFolder, _songIndex;
 uint8_t _previousButtonFolder = 255;
 
-#define EEPROM_SIZE 1
+#define EEPROM_SIZE 2
+const int START_SONG_DATA_ADDRESS = 0;
+const int VOLUME_DATA_ADDRESS = 1;
 
 #define RedButton GPIO_NUM_0
 #define YellowButton GPIO_NUM_4
@@ -211,14 +213,19 @@ void setup()
 
   // play start song:
   EEPROM.begin(EEPROM_SIZE);
-  int startSongDataAddress = 0;
-  _startSongId = EEPROM.read(startSongDataAddress);
+
+  _startSongId = EEPROM.read(START_SONG_DATA_ADDRESS);
   _startSongId = _startSongId == 255 ? 0 : _startSongId;
   _startSongId++;
   if (_startSongId >= SONGS_COUNT)
     _startSongId = 0;
-  EEPROM.write(startSongDataAddress, _startSongId);
+  EEPROM.write(START_SONG_DATA_ADDRESS, _startSongId);
   EEPROM.commit();
+
+  // init volume:
+  uint8_t volumeFromPersistentMemory = EEPROM.read(VOLUME_DATA_ADDRESS);
+  Serial.println(volumeFromPersistentMemory);
+  VOLUME = volumeFromPersistentMemory == 255 ? 15 : volumeFromPersistentMemory;
 
   // init LED
   strip.Begin();
@@ -337,7 +344,9 @@ void loop()
 
   if (red && green)
   {
-    VOLUME = 15;
+    VOLUME = VOLUME == 15 ? 31 : 15;
+    EEPROM.write(VOLUME_DATA_ADDRESS, VOLUME);
+    EEPROM.commit();
   }
 
   if (yellow && blue)
